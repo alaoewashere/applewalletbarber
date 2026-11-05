@@ -2,6 +2,40 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Business, LoyaltyProgram, UserProfile } from '@/types/database';
 
+export async function getBusinessBySlug(slugOrId: string): Promise<{
+  business: Business | null;
+  program: LoyaltyProgram | null;
+}> {
+  const admin = createAdminClient();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
+
+  let query = admin.from('businesses').select('*');
+  if (isUuid) {
+    query = query.eq('id', slugOrId);
+  } else {
+    const nameQuery = slugOrId.replace(/-/g, ' ');
+    query = query.ilike('name', `%${nameQuery}%`);
+  }
+
+  const { data: businesses } = await query.limit(1);
+  const business = businesses && businesses.length > 0 ? businesses[0] : null;
+
+  if (!business) {
+    return { business: null, program: null };
+  }
+
+  const { data: program } = await admin
+    .from('loyalty_programs')
+    .select('*')
+    .eq('business_id', business.id)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  return { business, program: program || null };
+}
+
 export async function getCurrentUserProfile(): Promise<{
   profile: UserProfile | null;
   business: Business | null;

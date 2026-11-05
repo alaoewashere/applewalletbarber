@@ -16,6 +16,7 @@ import {
   Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { RegistrationQrCard } from '@/components/dashboard/registration-qr-card';
 
 export default async function DashboardPage() {
   const { business, program } = await getCurrentUserProfile();
@@ -168,6 +169,16 @@ export default async function DashboardPage() {
           <p className="text-[10px] sm:text-xs text-zinc-400 mt-0.5">Lifetime redeemed</p>
         </div>
       </div>
+
+      {/* Permanent Shop Customer Registration QR Section */}
+      <RegistrationQrCard
+        businessName={business.name}
+        businessSlug={
+          business.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || business.id
+        }
+        primaryColor={business.primary_color}
+        stampsRequired={program?.stamps_required || 5}
+      />
 
       {/* Main Activity Feed & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-8">
