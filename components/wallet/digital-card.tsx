@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { Scissors, Gift, Sparkles, Smartphone } from 'lucide-react';
+import { Scissors, Gift, Sparkles, Smartphone, Download, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface DigitalCardProps {
   businessName?: string;
@@ -15,7 +15,7 @@ interface DigitalCardProps {
 }
 
 export function DigitalLoyaltyCard({
-  businessName = 'Fade Room Barbershop',
+  businessName = 'Yoused Barber',
   customerName = 'Valued Customer',
   currentStamps = 0,
   stampsRequired = 5,
@@ -24,6 +24,8 @@ export function DigitalLoyaltyCard({
   primaryColor = '#18181b',
 }: DigitalCardProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [googleLoading, setGoogleLoading] = useState<boolean>(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
   const isRewardUnlocked = currentStamps >= stampsRequired;
 
   useEffect(() => {
@@ -41,6 +43,30 @@ export function DigitalLoyaltyCard({
     }
   }, [qrToken]);
 
+  const handleGoogleWalletClick = async () => {
+    setGoogleLoading(true);
+    setGoogleError(null);
+    try {
+      const res = await fetch(`/api/wallet/google/${qrToken}`);
+      const data = await res.json();
+
+      if (data.success && data.saveUrl) {
+        window.location.href = data.saveUrl;
+      } else {
+        setGoogleError(
+          data.error ||
+            'Google Wallet API credentials are not yet configured. Apple Wallet pass is ready and active below.'
+        );
+      }
+    } catch (err: unknown) {
+      setGoogleError('Failed to connect to Google Wallet service.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const applePassUrl = `/api/wallet/apple/${qrToken}/download`;
+
   return (
     <div className="w-full max-w-sm mx-auto select-none">
       {/* Wallet Pass Container */}
@@ -49,7 +75,7 @@ export function DigitalLoyaltyCard({
         style={{
           backgroundColor: primaryColor || '#18181b',
           backgroundImage:
-            'radial-gradient(circle at top right, rgba(255,255,255,0.12), transparent 60%), radial-gradient(circle at bottom left, rgba(0,0,0,0.4), transparent 70%)',
+            'radial-gradient(circle at top right, rgba(212,175,55,0.18), transparent 60%), radial-gradient(circle at bottom left, rgba(0,0,0,0.6), transparent 70%)',
         }}
       >
         {/* Top Header */}
@@ -59,7 +85,7 @@ export function DigitalLoyaltyCard({
               <Scissors className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300 rotate-45 transform" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] sm:text-xs uppercase font-semibold tracking-wider text-zinc-300">
+              <div className="text-[10px] sm:text-xs uppercase font-semibold tracking-wider text-amber-200/80">
                 Barbershop Pass
               </div>
               <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight truncate">
@@ -163,30 +189,41 @@ export function DigitalLoyaltyCard({
       </div>
 
       {/* Official Wallet Action Buttons */}
-      <div className="mt-4 sm:mt-5 space-y-2">
-        <button
-          type="button"
-          onClick={() => {
-            alert('Apple Wallet: Pass simulation active. When official Apple Certificates are uploaded, this saves directly to your Apple Wallet.');
-          }}
-          className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-black hover:bg-zinc-900 text-white font-semibold flex items-center justify-center gap-2.5 shadow-md border border-zinc-800 transition-all active:scale-[0.98] text-xs sm:text-sm"
+      <div className="mt-4 sm:mt-5 space-y-2.5">
+        {/* Real Apple Wallet Button */}
+        <a
+          href={applePassUrl}
+          download="pass.pkpass"
+          className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-black hover:bg-zinc-900 text-white font-semibold flex items-center justify-center gap-2.5 shadow-md border border-zinc-800 transition-all active:scale-[0.98] text-xs sm:text-sm group"
         >
-          <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current" viewBox="0 0 170 170">
+          <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current group-hover:scale-105 transition-transform" viewBox="0 0 170 170">
             <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.67-7.81-11.96-14.34-6.41-9.78-11.48-20.76-15.22-32.94-3.74-12.18-5.61-23.7-5.61-34.56 0-14.35 3.69-26.14 11.07-35.37 7.38-9.23 16.49-13.96 27.33-14.2 4.35 0 9.27 1.13 14.77 3.39 5.49 2.26 9.4 3.44 11.73 3.55 2.12-.11 6.13-1.32 12.02-3.62 5.89-2.3 10.63-3.37 14.22-3.21 13.04.64 23.36 5.34 30.96 14.1-11.52 6.96-17.18 16.41-16.98 28.35.2 9.57 3.96 17.65 11.28 24.24 7.32 6.59 15.93 10.27 25.83 11.04-2.39 7.62-5.49 15.42-9.3 23.41zM119.22 31.84c0-7.39 2.66-14.42 7.98-21.09 5.32-6.67 11.89-10.75 19.71-12.25.33 1.2.49 2.39.49 3.59 0 7.39-2.77 14.65-8.31 21.78-5.54 7.13-12.22 11.22-20.04 12.27-.43-1.42-.65-2.82-.65-4.3z" />
           </svg>
-          <span>Add to Apple Wallet</span>
-        </button>
+          <span className="tracking-tight">Add to Apple Wallet</span>
+          <Download className="w-3.5 h-3.5 text-zinc-400 ml-auto group-hover:translate-y-0.5 transition-transform" />
+        </a>
 
+        {/* Google Wallet Button */}
         <button
           type="button"
-          onClick={() => {
-            alert('Google Wallet: Save link generated. When official Google Issuer credentials are configured, this adds directly to Google Wallet.');
-          }}
-          className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold flex items-center justify-center gap-2.5 shadow-md border border-zinc-700 transition-all active:scale-[0.98] text-xs sm:text-sm"
+          onClick={handleGoogleWalletClick}
+          disabled={googleLoading}
+          className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-zinc-900 hover:bg-zinc-800 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2.5 shadow-md border border-zinc-700 transition-all active:scale-[0.98] text-xs sm:text-sm"
         >
           <Smartphone className="w-5 h-5 text-emerald-400" />
-          <span>Save to Google Wallet</span>
+          <span>{googleLoading ? 'Generating Save Link...' : 'Save to Google Wallet'}</span>
         </button>
+
+        {/* Informative Google notice if clicked before Issuer configured */}
+        {googleError && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-left flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-[11px] text-zinc-300 leading-relaxed">
+              <span className="font-semibold text-amber-300 block mb-0.5">Google Wallet Status</span>
+              {googleError}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

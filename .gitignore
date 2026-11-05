@@ -25,5 +25,9 @@ yarn-error.log*
 # OS / Editor
 .DS_Store
 *.pem
+*.p12
+*.cer
+*.key
+certificates/
 .vscode/
 .idea/
