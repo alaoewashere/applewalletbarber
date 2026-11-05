@@ -1,15 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { Scissors, Lock, Mail, ArrowRight, Building2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
-  const router = useRouter();
-  const supabase = createClient();
-
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,52 +23,48 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        // Sign up with Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-              business_name: businessName,
-            },
-          },
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password,
+            fullName,
+            businessName,
+          }),
         });
 
-        if (authError) {
-          setErrorMsg(authError.message);
-          setLoading(false);
-          return;
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to create barbershop account');
         }
 
-        if (authData.user) {
-          // If session is active immediately or confirmation not required:
-          setSuccessMsg('Account created successfully! Redirecting...');
-          setTimeout(() => {
-            router.push('/dashboard');
-            router.refresh();
-          }, 1000);
-        } else {
-          setSuccessMsg('Check your email for the confirmation link to complete sign up.');
-        }
+        setSuccessMsg('Account created & confirmed! Entering your station...');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 800);
       } else {
-        // Sign in
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
         });
 
-        if (signInError) {
-          setErrorMsg(signInError.message);
-          setLoading(false);
-          return;
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Invalid email or password');
         }
 
-        router.push('/dashboard');
-        router.refresh();
+        setSuccessMsg('Welcome back! Entering station...');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 500);
       }
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'An unexpected error occurred.');
+      setErrorMsg(err instanceof Error ? err.message : 'An error occurred.');
     } finally {
       setLoading(false);
     }
@@ -162,7 +153,7 @@ export default function LoginPage() {
                       required
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder="e.g. Alex Barber"
+                      placeholder="e.g. Ali hussen"
                       className="w-full pl-10 pr-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     />
                   </div>
@@ -179,7 +170,7 @@ export default function LoginPage() {
                       required
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
-                      placeholder="e.g. Fade Room Studio"
+                      placeholder="e.g. Yoused barber"
                       className="w-full pl-10 pr-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white text-sm placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     />
                   </div>
