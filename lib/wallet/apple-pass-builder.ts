@@ -215,13 +215,22 @@ export async function generateApplePassBuffer(data: ApplePassData): Promise<Buff
   try {
     passCert = forge.pki.certificateFromPem(certPem);
   } catch (err: unknown) {
-    throw new Error(`Failed to parse pass certificate: ${err instanceof Error ? err.message : String(err)}`);
+    try {
+      // Lenient ASN.1 parsing fallback
+      passCert = (forge.pki as any).certificateFromPem(certPem, false, false);
+    } catch {
+      throw new Error(`Failed to parse pass certificate: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   try {
     wwdrCert = forge.pki.certificateFromPem(wwdrPem);
   } catch (err: unknown) {
-    throw new Error(`Failed to parse WWDR certificate: ${err instanceof Error ? err.message : String(err)}`);
+    try {
+      wwdrCert = (forge.pki as any).certificateFromPem(wwdrPem, false, false);
+    } catch {
+      throw new Error(`Failed to parse WWDR certificate: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   try {
