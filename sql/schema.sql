@@ -2,8 +2,18 @@
 -- DIGITAL LOYALTY PLATFORM FOR BARBERSHOPS - SUPABASE SCHEMA
 -- ============================================================
 
+-- Clean up any conflicting previous tables
+drop table if exists public.wallet_cards cascade;
+drop table if exists public.rewards cascade;
+drop table if exists public.loyalty_transactions cascade;
+drop table if exists public.loyalty_cards cascade;
+drop table if exists public.loyalty_programs cascade;
+drop table if exists public.customers cascade;
+drop table if exists public.user_profiles cascade;
+drop table if exists public.businesses cascade;
+
 -- 1. businesses – each barbershop is a tenant
-create table if not exists public.businesses (
+create table public.businesses (
     id uuid primary key default gen_random_uuid(),
     name text not null,
     logo_url text,
@@ -13,7 +23,7 @@ create table if not exists public.businesses (
 );
 
 -- 2. user_profiles – extends Supabase auth users
-create table if not exists public.user_profiles (
+create table public.user_profiles (
     id uuid primary key references auth.users (id) on delete cascade,
     business_id uuid not null references public.businesses (id) on delete cascade,
     full_name text not null,
@@ -22,7 +32,7 @@ create table if not exists public.user_profiles (
 );
 
 -- 3. customers – a person that receives haircut stamps
-create table if not exists public.customers (
+create table public.customers (
     id uuid primary key default gen_random_uuid(),
     business_id uuid not null references public.businesses (id) on delete cascade,
     full_name text not null,
@@ -34,7 +44,7 @@ create table if not exists public.customers (
 );
 
 -- 4. loyalty_programs – configurable rules per business
-create table if not exists public.loyalty_programs (
+create table public.loyalty_programs (
     id uuid primary key default gen_random_uuid(),
     business_id uuid not null references public.businesses (id) on delete cascade,
     name text not null,
@@ -47,7 +57,7 @@ create table if not exists public.loyalty_programs (
 );
 
 -- 5. loyalty_cards – one per customer per program
-create table if not exists public.loyalty_cards (
+create table public.loyalty_cards (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
     business_id uuid not null references public.businesses (id) on delete cascade,
@@ -61,7 +71,7 @@ create table if not exists public.loyalty_cards (
 );
 
 -- 6. loyalty_transactions – immutable audit trail of every haircut stamp/redemption
-create table if not exists public.loyalty_transactions (
+create table public.loyalty_transactions (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
     loyalty_card_id uuid not null references public.loyalty_cards (id) on delete cascade,
@@ -76,7 +86,7 @@ create table if not exists public.loyalty_transactions (
 );
 
 -- 7. rewards – concrete reward instances linked to a loyalty card
-create table if not exists public.rewards (
+create table public.rewards (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
     loyalty_card_id uuid not null references public.loyalty_cards (id) on delete cascade,
@@ -89,7 +99,7 @@ create table if not exists public.rewards (
 );
 
 -- 8. wallet_cards – tracks external wallet provider state per customer
-create table if not exists public.wallet_cards (
+create table public.wallet_cards (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
     loyalty_card_id uuid not null references public.loyalty_cards (id) on delete cascade,
