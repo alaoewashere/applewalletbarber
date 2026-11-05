@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { Customer, CustomerWithCard, DashboardMetrics, LoyaltyCard, Reward } from '@/types/database';
 import { walletService } from '@/lib/wallet/wallet-service';
 import crypto from 'crypto';
@@ -118,8 +119,11 @@ export async function createCustomer({
   return { success: true, customer };
 }
 
-export async function getCustomerById(customerId: string): Promise<CustomerWithCard | null> {
-  const supabase = await createServerSupabaseClient();
+export async function getCustomerById(
+  customerId: string,
+  providedClient?: any
+): Promise<CustomerWithCard | null> {
+  const supabase = providedClient || (await createServerSupabaseClient());
 
   const { data: customer, error: custError } = await supabase
     .from('customers')
@@ -177,7 +181,8 @@ export async function getCustomerById(customerId: string): Promise<CustomerWithC
 }
 
 export async function getCustomerByQrToken(qrToken: string): Promise<CustomerWithCard | null> {
-  const supabase = await createServerSupabaseClient();
+  // Use admin client so unauthenticated public customer pass requests succeed
+  const supabase = createAdminClient();
 
   const { data: customer, error: custError } = await supabase
     .from('customers')
@@ -187,7 +192,7 @@ export async function getCustomerByQrToken(qrToken: string): Promise<CustomerWit
 
   if (custError || !customer) return null;
 
-  return getCustomerById(customer.id);
+  return getCustomerById(customer.id, supabase);
 }
 
 export async function searchCustomers({

@@ -1,7 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { getCustomerByQrToken } from '@/lib/services/customer';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { DigitalLoyaltyCard } from '@/components/wallet/digital-card';
 import { Scissors, Sparkles, CheckCircle2 } from 'lucide-react';
 
@@ -18,7 +18,7 @@ export default async function PublicCustomerPassPage({
     notFound();
   }
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = createAdminClient();
   const { data: business } = await supabase
     .from('businesses')
     .select('*')
