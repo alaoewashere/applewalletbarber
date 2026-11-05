@@ -1,10 +1,12 @@
 import React from 'react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getCustomerByQrToken } from '@/lib/services/customer';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { DigitalLoyaltyCard } from '@/components/wallet/digital-card';
-import { Scissors, Sparkles, CheckCircle2 } from 'lucide-react';
-
+import { Scissors, Sparkles, CheckCircle2, UserCheck, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default async function PublicCustomerPassPage({
   params,
@@ -18,12 +20,26 @@ export default async function PublicCustomerPassPage({
     notFound();
   }
 
-  const supabase = createAdminClient();
-  const { data: business } = await supabase
+  const adminClient = createAdminClient();
+  const { data: business } = await adminClient
     .from('businesses')
     .select('*')
     .eq('id', customer.business_id)
     .single();
+
+  // Check if current visitor is a logged-in barber/staff member
+  let isBarberLoggedIn = false;
+  try {
+    const serverSupabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await serverSupabase.auth.getUser();
+    if (user) {
+      isBarberLoggedIn = true;
+    }
+  } catch (err) {
+    isBarberLoggedIn = false;
+  }
 
   const card = customer.card;
   const currentStamps = card?.current_stamps || 0;
@@ -55,15 +71,43 @@ export default async function PublicCustomerPassPage({
       </header>
 
       {/* Main Card View */}
-      <main className="relative z-10 py-6 max-w-sm mx-auto w-full">
+      <main className="relative z-10 py-4 max-w-sm mx-auto w-full space-y-4">
+        {/* Barber Shortcut Banner (Visible if barber is logged in on this browser) */}
+        {isBarberLoggedIn && (
+          <div className="p-4 rounded-3xl bg-zinc-900 border border-amber-400/40 shadow-xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5" />
+                Barber Session Detected
+              </span>
+              <span className="text-[11px] font-bold text-zinc-300 font-mono">
+                {currentStamps} / {stampsRequired} Stamps
+              </span>
+            </div>
+            <p className="text-xs text-zinc-300">
+              Manage <span className="font-bold text-white">{customer.full_name}</span> in your barber station.
+            </p>
+            <Link href={`/customers/${customer.id}`} className="block">
+              <Button
+                variant="primary"
+                size="md"
+                className="w-full h-11 bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black rounded-xl text-xs flex items-center justify-center gap-2"
+              >
+                <span>Open in Barber Dashboard</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </Link>
+          </div>
+        )}
+
         {isRewardUnlocked && (
-          <div className="mb-4 p-3.5 bg-amber-400 text-zinc-950 rounded-2xl font-black text-xs text-center shadow-xl animate-bounce">
+          <div className="p-3.5 bg-amber-400 text-zinc-950 rounded-2xl font-black text-xs text-center shadow-xl animate-bounce">
             🎉 You have unlocked a Free Haircut! Show this card to your barber.
           </div>
         )}
 
         <DigitalLoyaltyCard
-          businessName={business?.name || 'Fade Room'}
+          businessName={business?.name || 'Yoused Barber'}
           customerName={customer.full_name}
           currentStamps={currentStamps}
           stampsRequired={stampsRequired}

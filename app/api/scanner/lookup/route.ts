@@ -18,7 +18,17 @@ export async function GET(request: Request) {
     }
 
     const supabase = await createServerSupabaseClient();
-    const query = q.trim();
+    let query = q.trim();
+
+    // If query is a URL (e.g. http://.../card/[token]), extract the last path segment as the token
+    if (query.includes('/card/')) {
+      const parts = query.split('/card/');
+      query = parts[parts.length - 1].split('?')[0].split('#')[0].trim();
+    } else if (query.startsWith('http://') || query.startsWith('https://')) {
+      const urlObj = new URL(query);
+      const segments = urlObj.pathname.split('/').filter(Boolean);
+      query = segments[segments.length - 1] || query;
+    }
 
     // 1. Direct match by qr_token
     const { data: tokenMatch } = await supabase
