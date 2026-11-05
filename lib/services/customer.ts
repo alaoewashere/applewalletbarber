@@ -96,6 +96,7 @@ export async function createCustomer({
     {
       customer_id: customer.id,
       loyalty_card_id: card.id,
+      business_id: businessId,
       provider: 'apple',
       external_card_id: syncResult.apple.externalCardId || null,
       wallet_url: syncResult.apple.cardUrl || null,
@@ -104,6 +105,7 @@ export async function createCustomer({
     {
       customer_id: customer.id,
       loyalty_card_id: card.id,
+      business_id: businessId,
       provider: 'google',
       external_card_id: syncResult.google.externalCardId || null,
       wallet_url: syncResult.google.cardUrl || null,

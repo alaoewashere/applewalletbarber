@@ -103,6 +103,7 @@ create table public.wallet_cards (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
     loyalty_card_id uuid not null references public.loyalty_cards (id) on delete cascade,
+    business_id uuid not null references public.businesses (id) on delete cascade,
     provider text not null check (provider in ('apple','google')),
     external_card_id text,
     wallet_url text,
@@ -119,6 +120,7 @@ create index if not exists idx_loyalty_cards_program on public.loyalty_cards (pr
 create index if not exists idx_loyalty_transactions_card on public.loyalty_transactions (loyalty_card_id);
 create index if not exists idx_rewards_customer on public.rewards (customer_id);
 create index if not exists idx_wallet_cards_customer on public.wallet_cards (customer_id);
+create index if not exists idx_wallet_cards_business on public.wallet_cards (business_id);
 
 -- Enable Row-Level Security
 alter table public.businesses enable row level security;

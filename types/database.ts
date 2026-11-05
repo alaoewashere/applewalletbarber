@@ -95,6 +95,7 @@ export interface WalletCard {
   id: string;
   customer_id: string;
   loyalty_card_id: string;
+  business_id: string;
   provider: WalletProvider;
   external_card_id: string | null;
   wallet_url: string | null;
