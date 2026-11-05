@@ -32,7 +32,7 @@ export default async function PublicCustomerPassPage({
   const isRewardUnlocked = card?.status === 'reward_available' || currentStamps >= stampsRequired;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col justify-between p-4 sm:p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col justify-between p-4 sm:p-6 pb-safe pt-safe relative overflow-hidden">
       {/* Background ambient lighting */}
       <div className="absolute top-0 -left-10 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 -right-10 w-80 h-80 bg-zinc-800/20 rounded-full blur-3xl pointer-events-none"></div>

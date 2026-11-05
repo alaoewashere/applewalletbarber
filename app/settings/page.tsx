@@ -103,10 +103,10 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSave} className="space-y-4 sm:space-y-6">
         {/* Business Information Card */}
-        <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400">
+        <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 shadow-sm space-y-4">
+          <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-400">
             Barbershop Profile
           </h2>
 
@@ -119,7 +119,7 @@ export default function SettingsPage() {
               required
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
           </div>
 
@@ -132,25 +132,25 @@ export default function SettingsPage() {
                 type="color"
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
-                className="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent"
+                className="w-12 h-12 rounded-2xl cursor-pointer border-0 bg-transparent"
               />
-              <span className="font-mono text-xs text-zinc-500">{primaryColor}</span>
+              <span className="font-mono text-sm text-zinc-500">{primaryColor}</span>
             </div>
           </div>
         </div>
 
         {/* Loyalty Program Rules */}
-        <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm space-y-4">
+        <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-500" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-400">
+            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-zinc-400">
               Loyalty Program Rules
             </h2>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              Stamps Required for Reward
+              Haircuts Required for Reward
             </label>
             <input
               type="number"
@@ -159,10 +159,10 @@ export default function SettingsPage() {
               required
               value={stampsRequired}
               onChange={(e) => setStampsRequired(Number(e.target.value))}
-              className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
             <p className="text-[11px] text-zinc-400 mt-1">
-              Standard is 5 stamps (e.g. 1 stamp per haircut).
+              Standard is 5 haircuts = 1 free haircut.
             </p>
           </div>
 
@@ -175,10 +175,10 @@ export default function SettingsPage() {
               required
               value={rewardTitle}
               onChange={(e) => setRewardTitle(e.target.value)}
-              className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
             <p className="text-[11px] text-zinc-400 mt-1">
-              Displayed on customer passes (e.g. &quot;Free Haircut&quot; or &quot;Free Beard Trim&quot;).
+              Displayed on client passes (e.g. &quot;Free Haircut&quot; or &quot;Free Beard Trim&quot;).
             </p>
           </div>
         </div>
@@ -187,10 +187,10 @@ export default function SettingsPage() {
           type="submit"
           size="lg"
           isLoading={isSaving}
-          className="w-full bg-zinc-900 text-white hover:bg-zinc-800 font-bold"
+          className="w-full h-14 bg-zinc-900 text-white hover:bg-zinc-800 font-black rounded-2xl active:scale-95 text-base"
         >
           <Save className="w-4 h-4 mr-2" />
-          Save Settings
+          Save Station Settings
         </Button>
       </form>
     </div>

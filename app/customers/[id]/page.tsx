@@ -37,62 +37,68 @@ export default async function CustomerDetailPage({
   return (
     <div className="space-y-6">
       {/* Back button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <Link
           href="/customers"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors active:scale-95"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Customers
+          Back to Client List
         </Link>
 
-        <Link href={`/card/${customer.qr_token}`} target="_blank">
-          <Button size="sm" variant="outline" className="text-xs">
-            <span>Customer Mobile Pass View</span>
+        <Link href={`/card/${customer.qr_token}`} target="_blank" className="w-full sm:w-auto">
+          <Button size="sm" variant="outline" className="w-full sm:w-auto text-xs py-2 active:scale-95">
+            <span>Customer Mobile Pass</span>
             <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
           </Button>
         </Link>
       </div>
 
       {/* Profile Overview Banner */}
-      <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-100 dark:border-zinc-800">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-zinc-900 text-amber-400 flex items-center justify-center font-black text-2xl shadow-md dark:bg-zinc-100 dark:text-zinc-900">
+      <div className="rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-8 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 sm:pb-6 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-zinc-900 text-amber-400 flex items-center justify-center font-black text-lg sm:text-2xl shadow-md dark:bg-zinc-100 dark:text-zinc-900 shrink-0">
               {customer.full_name.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 truncate">
                   {customer.full_name}
                 </h1>
                 {isRewardUnlocked && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-xs font-bold uppercase tracking-wider animate-pulse">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 text-[10px] sm:text-xs font-bold uppercase tracking-wider animate-pulse">
                     <Sparkles className="w-3 h-3" />
                     Reward Ready
                   </span>
                 )}
               </div>
-              <p className="text-xs text-zinc-400 font-mono mt-0.5">ID: {customer.id}</p>
+              <p className="text-[11px] text-zinc-400 font-mono mt-0.5 truncate">Pass #{customer.qr_token.slice(0, 8)}</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-zinc-500">
             {customer.phone && (
-              <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-1.5 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50">
+              <a
+                href={`tel:${customer.phone}`}
+                className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-1.5 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 hover:bg-zinc-100 active:scale-95 transition-all"
+              >
                 <Phone className="w-3.5 h-3.5 text-zinc-400" />
                 <span className="font-mono font-medium">{customer.phone}</span>
-              </div>
+              </a>
             )}
             {customer.email && (
-              <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-1.5 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50">
-                <Mail className="w-3.5 h-3.5 text-zinc-400" />
-                <span>{customer.email}</span>
-              </div>
+              <a
+                href={`mailto:${customer.email}`}
+                className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-1.5 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 hover:bg-zinc-100 active:scale-95 transition-all truncate max-w-[200px]"
+              >
+                <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="truncate">{customer.email}</span>
+              </a>
             )}
             <div className="flex items-center gap-1.5 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-1.5 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50">
               <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-              <span>Joined {new Date(customer.created_at).toLocaleDateString()}</span>
+              <span>Joined {new Date(customer.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
             </div>
           </div>
         </div>

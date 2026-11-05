@@ -41,7 +41,7 @@ export default async function DashboardLayout({
         userName={activeProfile?.full_name || user.email || 'Barber'}
         role={activeProfile?.role || 'owner'}
       />
-      <main className="flex-1 pb-20 md:pb-12 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className="flex-1 pb-32 md:pb-12 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-4 sm:pt-6">
         {children}
       </main>
     </div>
