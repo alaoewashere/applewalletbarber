@@ -203,8 +203,11 @@ export async function generateApplePassBuffer(data: ApplePassData): Promise<Buff
 
   await fs.promises.writeFile(tmpManifest, manifestBuf);
 
+  const opensslBin =
+    process.env.OPENSSL_BIN || (fs.existsSync('/usr/bin/openssl') ? '/usr/bin/openssl' : 'openssl');
+
   try {
-    await execFileAsync('openssl', [
+    await execFileAsync(opensslBin, [
       'smime',
       '-sign',
       '-signer',
