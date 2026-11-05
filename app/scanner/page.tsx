@@ -45,12 +45,19 @@ export default function ScannerPage() {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch((playErr) => {
+          // Play request interrupted by unmount or reload - safe to ignore
+          console.debug('Video play interrupted:', playErr);
+        });
       }
       setHasCameraPermission(true);
     } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        // Safe ignore on navigation/re-render abort
+        return;
+      }
       setHasCameraPermission(false);
-      setErrorMsg('Camera permission was denied. Please allow camera access or use manual search.');
+      setErrorMsg('Camera permission was not granted. Please allow camera access or use manual search.');
     }
   };
 
@@ -58,6 +65,9 @@ export default function ScannerPage() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
   };
 
