@@ -61,15 +61,12 @@ export async function GET(
       barcodeValue: customer.qr_token,
     });
 
-    const filename = `${(business?.name || 'yoused-barber')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')}-pass.pkpass`;
-
     return new NextResponse(passBuffer as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.apple.pkpass',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': 'attachment; filename="pass.pkpass"',
+        'Content-Length': String(passBuffer.length),
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });

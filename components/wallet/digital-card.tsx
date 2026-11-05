@@ -193,7 +193,6 @@ export function DigitalLoyaltyCard({
         {/* Real Apple Wallet Button */}
         <a
           href={applePassUrl}
-          download="pass.pkpass"
           className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-black hover:bg-zinc-900 text-white font-semibold flex items-center justify-center gap-2.5 shadow-md border border-zinc-800 transition-all active:scale-[0.98] text-xs sm:text-sm group"
         >
           <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current group-hover:scale-105 transition-transform" viewBox="0 0 170 170">

@@ -33,12 +33,21 @@ function cleanPem(input?: string): string {
   return str.replace(/\\n/g, '\n');
 }
 
+import { loadAppleCertificates } from './cert-vault';
+
 export function getAppleCertificatesPem(): {
   certPem: string;
   keyPem: string;
   wwdrPem: string;
 } {
-  // 1. Check Base64 / PEM environment variables (for Vercel Serverless)
+  // 1. Try secure cryptographic vault (embedded AES-256-GCM - bit-for-bit exact)
+  try {
+    return loadAppleCertificates();
+  } catch (err) {
+    console.warn('Vault failed, checking env variables:', err);
+  }
+
+  // 2. Check Base64 / PEM environment variables (for Vercel Serverless)
   const certEnv = process.env.APPLE_CERTIFICATE_BASE64 || process.env.APPLE_CERTIFICATE_PEM;
   const keyEnv = process.env.APPLE_PRIVATE_KEY_BASE64 || process.env.APPLE_PRIVATE_KEY_PEM;
   const wwdrEnv = process.env.APPLE_WWDR_CERTIFICATE_BASE64 || process.env.APPLE_WWDR_CERTIFICATE_PEM;
@@ -51,7 +60,7 @@ export function getAppleCertificatesPem(): {
     };
   }
 
-  // 2. Fallback to physical files in local certificates/ folder
+  // 3. Fallback to physical files in local certificates/ folder
   const localCert = path.join(process.cwd(), 'certificates', 'pass.pem');
   const localKey = path.join(process.cwd(), 'certificates', 'pass_key.key');
   const localWwdr = path.join(process.cwd(), 'certificates', 'wwdr.pem');

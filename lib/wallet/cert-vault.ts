@@ -1,0 +1,68 @@
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+
+// AES-256-GCM encrypted vault containing pass.pem, pass_key.key, and wwdr.pem
+// Eliminates whitespace/base64 truncation issues across serverless environments
+const VAULT_CIPHERTEXT_B64 = `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`;
+
+const VAULT_PASSWORD = process.env.APPLE_CERTS_PASSWORD || 'yousedbarber-wallet-vault-2026';
+
+function decryptPayload(data: Buffer, password: string): { certPem: string; keyPem: string; wwdrPem: string } {
+  const readSalt = data.subarray(0, 16);
+  const readIv = data.subarray(16, 28);
+  const readTag = data.subarray(28, 44);
+  const readCiphertext = data.subarray(44);
+
+  const decipherKey = crypto.scryptSync(password, readSalt, 32);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', decipherKey, readIv);
+  decipher.setAuthTag(readTag);
+  const decrypted = Buffer.concat([decipher.update(readCiphertext), decipher.final()]).toString('utf-8');
+  const parsed = JSON.parse(decrypted);
+
+  return {
+    certPem: parsed.cert,
+    keyPem: parsed.key,
+    wwdrPem: parsed.wwdr,
+  };
+}
+
+export function loadAppleCertificates(): {
+  certPem: string;
+  keyPem: string;
+  wwdrPem: string;
+} {
+  // 1. Try embedded encrypted vault (instant, zero filesystem or environment dependency)
+  try {
+    const data = Buffer.from(VAULT_CIPHERTEXT_B64, 'base64');
+    return decryptPayload(data, VAULT_PASSWORD);
+  } catch (err) {
+    console.warn('Embedded vault decryption failed, checking disk:', err);
+  }
+
+  // 2. Try encrypted vault file on disk
+  const vaultPath = path.join(process.cwd(), 'lib/wallet/certificates.enc');
+  if (fs.existsSync(vaultPath)) {
+    try {
+      const data = fs.readFileSync(vaultPath);
+      return decryptPayload(data, VAULT_PASSWORD);
+    } catch (e) {
+      console.warn('certificates.enc disk load failed:', e);
+    }
+  }
+
+  // 3. Fallback to local files in certificates/ folder
+  const localCert = path.join(process.cwd(), 'certificates', 'pass.pem');
+  const localKey = path.join(process.cwd(), 'certificates', 'pass_key.key');
+  const localWwdr = path.join(process.cwd(), 'certificates', 'wwdr.pem');
+
+  if (fs.existsSync(localCert) && fs.existsSync(localKey) && fs.existsSync(localWwdr)) {
+    return {
+      certPem: fs.readFileSync(localCert, 'utf-8'),
+      keyPem: fs.readFileSync(localKey, 'utf-8'),
+      wwdrPem: fs.readFileSync(localWwdr, 'utf-8'),
+    };
+  }
+
+  throw new Error('Apple Wallet certificates could not be loaded.');
+}
