@@ -21,17 +21,48 @@ export interface ApplePassData {
   logoUrl?: string;
 }
 
-export async function generateApplePassBuffer(data: ApplePassData): Promise<Buffer> {
-  const certPath = path.join(process.cwd(), 'certificates', 'pass.pem');
-  const keyPath = path.join(process.cwd(), 'certificates', 'pass_key.key');
-  const wwdrPath = path.join(process.cwd(), 'certificates', 'wwdr.pem');
-  const assetsDir = path.resolve(process.cwd(), 'lib/wallet/assets/pass-template');
+export function resolveAppleCertificates(): {
+  certPath: string;
+  keyPath: string;
+  wwdrPath: string;
+} {
+  const localCert = path.join(process.cwd(), 'certificates', 'pass.pem');
+  const localKey = path.join(process.cwd(), 'certificates', 'pass_key.key');
+  const localWwdr = path.join(process.cwd(), 'certificates', 'wwdr.pem');
 
-  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath) || !fs.existsSync(wwdrPath)) {
-    throw new Error(
-      `Apple certificates missing. Required: pass.pem, pass_key.key, wwdr.pem in ${path.dirname(certPath)}`
-    );
+  if (fs.existsSync(localCert) && fs.existsSync(localKey) && fs.existsSync(localWwdr)) {
+    return { certPath: localCert, keyPath: localKey, wwdrPath: localWwdr };
   }
+
+  // Fallback to Base64 environment variables (for Vercel serverless deployment)
+  const certB64 = process.env.APPLE_CERTIFICATE_BASE64;
+  const keyB64 = process.env.APPLE_PRIVATE_KEY_BASE64;
+  const wwdrB64 = process.env.APPLE_WWDR_CERTIFICATE_BASE64;
+
+  if (certB64 && keyB64 && wwdrB64) {
+    const tmpDir = path.join('/tmp', 'apple_certs');
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    const certPath = path.join(tmpDir, 'pass.pem');
+    const keyPath = path.join(tmpDir, 'pass_key.key');
+    const wwdrPath = path.join(tmpDir, 'wwdr.pem');
+
+    fs.writeFileSync(certPath, Buffer.from(certB64, 'base64'));
+    fs.writeFileSync(keyPath, Buffer.from(keyB64, 'base64'));
+    fs.writeFileSync(wwdrPath, Buffer.from(wwdrB64, 'base64'));
+
+    return { certPath, keyPath, wwdrPath };
+  }
+
+  throw new Error(
+    'Apple certificates missing. Either place pass.pem, pass_key.key, wwdr.pem in certificates/ or set APPLE_CERTIFICATE_BASE64, APPLE_PRIVATE_KEY_BASE64, APPLE_WWDR_CERTIFICATE_BASE64 in Vercel.'
+  );
+}
+
+export async function generateApplePassBuffer(data: ApplePassData): Promise<Buffer> {
+  const { certPath, keyPath, wwdrPath } = resolveAppleCertificates();
+  const assetsDir = path.resolve(process.cwd(), 'lib/wallet/assets/pass-template');
 
   const passTypeIdentifier = process.env.APPLE_PASS_TYPE_IDENTIFIER || 'pass.com.yousedbarber.loyalty';
   const teamIdentifier = process.env.APPLE_TEAM_IDENTIFIER || 'PNRU9TBN6A';

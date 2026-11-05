@@ -1,14 +1,27 @@
-import fs from 'fs';
-import path from 'path';
 import { IWalletService, WalletCardPayload, WalletServiceResult } from './types';
-import { generateApplePassBuffer } from './apple-pass-builder';
+import { generateApplePassBuffer, resolveAppleCertificates } from './apple-pass-builder';
+
+export function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/+$/, '');
+}
 
 export class AppleWalletService implements IWalletService {
   private hasValidCertificates(): boolean {
-    const certPath = path.join(process.cwd(), 'certificates', 'pass.pem');
-    const keyPath = path.join(process.cwd(), 'certificates', 'pass_key.key');
-    const wwdrPath = path.join(process.cwd(), 'certificates', 'wwdr.pem');
-    return fs.existsSync(certPath) && fs.existsSync(keyPath) && fs.existsSync(wwdrPath);
+    try {
+      resolveAppleCertificates();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async createCard(payload: WalletCardPayload): Promise<WalletServiceResult> {
@@ -24,7 +37,7 @@ export class AppleWalletService implements IWalletService {
   }
 
   async getPassUrl(externalCardId: string): Promise<string | null> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = getBaseUrl();
     return `${baseUrl}/api/wallet/apple/${externalCardId}/download`;
   }
 
@@ -33,12 +46,12 @@ export class AppleWalletService implements IWalletService {
       return {
         success: false,
         provider: 'apple',
-        error: 'Apple Wallet certificates (pass.pem, pass_key.key, wwdr.pem) not found in certificates directory.',
+        error: 'Apple Wallet certificates (pass.pem, pass_key.key, wwdr.pem) not found.',
       };
     }
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const baseUrl = getBaseUrl();
       const downloadUrl = `${baseUrl}/api/wallet/apple/${payload.qrToken}/download`;
 
       return {
@@ -66,11 +79,8 @@ export class AppleWalletService implements IWalletService {
     }
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const baseUrl = getBaseUrl();
       const downloadUrl = `${baseUrl}/api/wallet/apple/${externalCardId}/download`;
-
-      // Optional: If APNs push updates are wired to registered device tokens, send push notification
-      // Apple PassKit device will re-fetch GET /v1/passes/{passTypeIdentifier}/{serialNumber}
 
       return {
         success: true,
@@ -89,8 +99,8 @@ export class AppleWalletService implements IWalletService {
   }
 
   async generatePassBuffer(payload: WalletCardPayload): Promise<Buffer> {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    const webServiceURL = `${appUrl}/api/wallet/apple`;
+    const baseUrl = getBaseUrl();
+    const webServiceURL = `${baseUrl}/api/wallet/apple`;
 
     return generateApplePassBuffer({
       serialNumber: payload.qrToken,
