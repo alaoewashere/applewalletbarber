@@ -1,11 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
+import forge from 'node-forge';
 import { ZipArchive } from 'archiver';
-
-const execFileAsync = promisify(execFile);
 
 export interface ApplePassData {
   serialNumber: string;
@@ -21,47 +18,44 @@ export interface ApplePassData {
   logoUrl?: string;
 }
 
-export function resolveAppleCertificates(): {
-  certPath: string;
-  keyPath: string;
-  wwdrPath: string;
+export function getAppleCertificatesPem(): {
+  certPem: string;
+  keyPem: string;
+  wwdrPem: string;
 } {
-  const localCert = path.join(process.cwd(), 'certificates', 'pass.pem');
-  const localKey = path.join(process.cwd(), 'certificates', 'pass_key.key');
-  const localWwdr = path.join(process.cwd(), 'certificates', 'wwdr.pem');
-
-  if (fs.existsSync(localCert) && fs.existsSync(localKey) && fs.existsSync(localWwdr)) {
-    return { certPath: localCert, keyPath: localKey, wwdrPath: localWwdr };
-  }
-
-  // Fallback to Base64 environment variables (for Vercel serverless deployment)
+  // 1. Check Base64 environment variables (primary for Vercel / Serverless deployments)
   const certB64 = process.env.APPLE_CERTIFICATE_BASE64;
   const keyB64 = process.env.APPLE_PRIVATE_KEY_BASE64;
   const wwdrB64 = process.env.APPLE_WWDR_CERTIFICATE_BASE64;
 
   if (certB64 && keyB64 && wwdrB64) {
-    const tmpDir = path.join('/tmp', 'apple_certs');
-    if (!fs.existsSync(tmpDir)) {
-      fs.mkdirSync(tmpDir, { recursive: true });
-    }
-    const certPath = path.join(tmpDir, 'pass.pem');
-    const keyPath = path.join(tmpDir, 'pass_key.key');
-    const wwdrPath = path.join(tmpDir, 'wwdr.pem');
+    return {
+      certPem: Buffer.from(certB64, 'base64').toString('utf-8'),
+      keyPem: Buffer.from(keyB64, 'base64').toString('utf-8'),
+      wwdrPem: Buffer.from(wwdrB64, 'base64').toString('utf-8'),
+    };
+  }
 
-    fs.writeFileSync(certPath, Buffer.from(certB64, 'base64'));
-    fs.writeFileSync(keyPath, Buffer.from(keyB64, 'base64'));
-    fs.writeFileSync(wwdrPath, Buffer.from(wwdrB64, 'base64'));
+  // 2. Fallback to physical files in local certificates/ folder
+  const localCert = path.join(process.cwd(), 'certificates', 'pass.pem');
+  const localKey = path.join(process.cwd(), 'certificates', 'pass_key.key');
+  const localWwdr = path.join(process.cwd(), 'certificates', 'wwdr.pem');
 
-    return { certPath, keyPath, wwdrPath };
+  if (fs.existsSync(localCert) && fs.existsSync(localKey) && fs.existsSync(localWwdr)) {
+    return {
+      certPem: fs.readFileSync(localCert, 'utf-8'),
+      keyPem: fs.readFileSync(localKey, 'utf-8'),
+      wwdrPem: fs.readFileSync(localWwdr, 'utf-8'),
+    };
   }
 
   throw new Error(
-    'Apple certificates missing. Either place pass.pem, pass_key.key, wwdr.pem in certificates/ or set APPLE_CERTIFICATE_BASE64, APPLE_PRIVATE_KEY_BASE64, APPLE_WWDR_CERTIFICATE_BASE64 in Vercel.'
+    'Apple certificates missing. Either set APPLE_CERTIFICATE_BASE64, APPLE_PRIVATE_KEY_BASE64, APPLE_WWDR_CERTIFICATE_BASE64 in Vercel or place files in certificates/.'
   );
 }
 
 export async function generateApplePassBuffer(data: ApplePassData): Promise<Buffer> {
-  const { certPath, keyPath, wwdrPath } = resolveAppleCertificates();
+  const { certPem, keyPem, wwdrPem } = getAppleCertificatesPem();
   const assetsDir = path.resolve(process.cwd(), 'lib/wallet/assets/pass-template');
 
   const passTypeIdentifier = process.env.APPLE_PASS_TYPE_IDENTIFIER || 'pass.com.yousedbarber.loyalty';
@@ -159,7 +153,6 @@ export async function generateApplePassBuffer(data: ApplePassData): Promise<Buff
     },
   };
 
-  // Add Apple Web Service Push URL if configured
   if (data.webServiceURL && data.authenticationToken) {
     passJson.webServiceURL = data.webServiceURL;
     passJson.authenticationToken = data.authenticationToken;
@@ -196,41 +189,37 @@ export async function generateApplePassBuffer(data: ApplePassData): Promise<Buff
   const manifestBuf = Buffer.from(JSON.stringify(manifest, null, 2), 'utf-8');
   fileBuffers['manifest.json'] = manifestBuf;
 
-  // Sign manifest with Apple Pass certificate & WWDR
-  const tmpId = crypto.randomUUID();
-  const tmpManifest = path.join('/tmp', `manifest_${tmpId}.json`);
-  const tmpSig = path.join('/tmp', `sig_${tmpId}.der`);
+  // Pure JavaScript PKCS#7 Detached Signing via node-forge (Zero external binary dependencies)
+  const p7 = forge.pkcs7.createSignedData();
+  p7.content = forge.util.createBuffer(manifestBuf.toString('utf-8'), 'utf8');
 
-  await fs.promises.writeFile(tmpManifest, manifestBuf);
+  const passCert = forge.pki.certificateFromPem(certPem);
+  const wwdrCert = forge.pki.certificateFromPem(wwdrPem);
+  const privateKey = forge.pki.privateKeyFromPem(keyPem);
 
-  const opensslBin =
-    process.env.OPENSSL_BIN || (fs.existsSync('/usr/bin/openssl') ? '/usr/bin/openssl' : 'openssl');
+  p7.addCertificate(passCert);
+  p7.addCertificate(wwdrCert);
+  p7.addSigner({
+    key: privateKey,
+    certificate: passCert,
+    digestAlgorithm: forge.pki.oids.sha256,
+    authenticatedAttributes: [
+      {
+        type: forge.pki.oids.contentType,
+        value: forge.pki.oids.data,
+      },
+      {
+        type: forge.pki.oids.messageDigest,
+      },
+      {
+        type: forge.pki.oids.signingTime,
+      },
+    ],
+  });
 
-  try {
-    await execFileAsync(opensslBin, [
-      'smime',
-      '-sign',
-      '-signer',
-      certPath,
-      '-inkey',
-      keyPath,
-      '-certfile',
-      wwdrPath,
-      '-binary',
-      '-outform',
-      'DER',
-      '-in',
-      tmpManifest,
-      '-out',
-      tmpSig,
-    ]);
-
-    fileBuffers['signature'] = await fs.promises.readFile(tmpSig);
-  } finally {
-    // Clean up temporary files
-    if (fs.existsSync(tmpManifest)) await fs.promises.unlink(tmpManifest).catch(() => {});
-    if (fs.existsSync(tmpSig)) await fs.promises.unlink(tmpSig).catch(() => {});
-  }
+  p7.sign({ detached: true });
+  const der = forge.asn1.toDer(p7.toAsn1()).getBytes();
+  fileBuffers['signature'] = Buffer.from(der, 'binary');
 
   // Package all files into in-memory .pkpass ZIP buffer
   return new Promise<Buffer>((resolve, reject) => {

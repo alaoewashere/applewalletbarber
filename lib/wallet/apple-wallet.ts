@@ -1,5 +1,5 @@
 import { IWalletService, WalletCardPayload, WalletServiceResult } from './types';
-import { generateApplePassBuffer, resolveAppleCertificates } from './apple-pass-builder';
+import { generateApplePassBuffer, getAppleCertificatesPem } from './apple-pass-builder';
 
 export function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
@@ -17,7 +17,7 @@ export function getBaseUrl(): string {
 export class AppleWalletService implements IWalletService {
   private hasValidCertificates(): boolean {
     try {
-      resolveAppleCertificates();
+      getAppleCertificatesPem();
       return true;
     } catch {
       return false;
