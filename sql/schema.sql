@@ -1,6 +1,8 @@
--- ------------------------------------------------------------
+-- ============================================================
+-- DIGITAL LOYALTY PLATFORM FOR BARBERSHOPS - SUPABASE SCHEMA
+-- ============================================================
+
 -- 1. businesses – each barbershop is a tenant
--- ------------------------------------------------------------
 create table if not exists public.businesses (
     id uuid primary key default gen_random_uuid(),
     name text not null,
@@ -10,9 +12,7 @@ create table if not exists public.businesses (
     updated_at timestamptz not null default now()
 );
 
--- ------------------------------------------------------------
 -- 2. user_profiles – extends Supabase auth users
--- ------------------------------------------------------------
 create table if not exists public.user_profiles (
     id uuid primary key references auth.users (id) on delete cascade,
     business_id uuid not null references public.businesses (id) on delete cascade,
@@ -21,9 +21,7 @@ create table if not exists public.user_profiles (
     created_at timestamptz not null default now()
 );
 
--- ------------------------------------------------------------
--- 3. customers – a person that receives stamps
--- ------------------------------------------------------------
+-- 3. customers – a person that receives haircut stamps
 create table if not exists public.customers (
     id uuid primary key default gen_random_uuid(),
     business_id uuid not null references public.businesses (id) on delete cascade,
@@ -35,9 +33,7 @@ create table if not exists public.customers (
     updated_at timestamptz not null default now()
 );
 
--- ------------------------------------------------------------
--- 4. loyalty_programs – configurable per business
--- ------------------------------------------------------------
+-- 4. loyalty_programs – configurable rules per business
 create table if not exists public.loyalty_programs (
     id uuid primary key default gen_random_uuid(),
     business_id uuid not null references public.businesses (id) on delete cascade,
@@ -50,9 +46,7 @@ create table if not exists public.loyalty_programs (
     updated_at timestamptz not null default now()
 );
 
--- ------------------------------------------------------------
--- 5. loyalty_cards – one per customer per program (currently 1 program per business)
--- ------------------------------------------------------------
+-- 5. loyalty_cards – one per customer per program
 create table if not exists public.loyalty_cards (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
@@ -66,9 +60,7 @@ create table if not exists public.loyalty_cards (
     unique (customer_id, program_id)
 );
 
--- ------------------------------------------------------------
--- 6. loyalty_transactions – immutable audit trail of every action
--- ------------------------------------------------------------
+-- 6. loyalty_transactions – immutable audit trail of every haircut stamp/redemption
 create table if not exists public.loyalty_transactions (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
@@ -83,9 +75,7 @@ create table if not exists public.loyalty_transactions (
     unique (idempotency_key)
 );
 
--- ------------------------------------------------------------
 -- 7. rewards – concrete reward instances linked to a loyalty card
--- ------------------------------------------------------------
 create table if not exists public.rewards (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
@@ -98,9 +88,7 @@ create table if not exists public.rewards (
     created_at timestamptz not null default now()
 );
 
--- ------------------------------------------------------------
 -- 8. wallet_cards – tracks external wallet provider state per customer
--- ------------------------------------------------------------
 create table if not exists public.wallet_cards (
     id uuid primary key default gen_random_uuid(),
     customer_id uuid not null references public.customers (id) on delete cascade,
@@ -114,9 +102,7 @@ create table if not exists public.wallet_cards (
     unique (customer_id, provider)
 );
 
--- ------------------------------------------------------------
--- 9. Indexes for fast look‑ups and joins
--- ------------------------------------------------------------
+-- Indexes for performance
 create index if not exists idx_customers_business on public.customers (business_id);
 create index if not exists idx_loyalty_cards_customer on public.loyalty_cards (customer_id);
 create index if not exists idx_loyalty_cards_program on public.loyalty_cards (program_id);
@@ -124,9 +110,7 @@ create index if not exists idx_loyalty_transactions_card on public.loyalty_trans
 create index if not exists idx_rewards_customer on public.rewards (customer_id);
 create index if not exists idx_wallet_cards_customer on public.wallet_cards (customer_id);
 
--- ------------------------------------------------------------
--- 10. Row‑Level Security (RLS) – business‑level isolation
--- ------------------------------------------------------------
+-- Enable Row-Level Security
 alter table public.businesses enable row level security;
 alter table public.user_profiles enable row level security;
 alter table public.customers enable row level security;
@@ -136,58 +120,61 @@ alter table public.loyalty_transactions enable row level security;
 alter table public.rewards enable row level security;
 alter table public.wallet_cards enable row level security;
 
+-- Helper function: current user's business
 create or replace function public.current_user_business() returns uuid
     language sql stable security definer as $$
         select business_id from public.user_profiles where id = auth.uid();
 $$;
 
--- Users can read/write their own profile only
-create policy "user_profile_select" on public.user_profiles using (id = auth.uid());
+-- Businesses policies
+create policy "businesses_select" on public.businesses for select using (true);
+create policy "businesses_insert" on public.businesses for insert with check (true);
+create policy "businesses_update" on public.businesses for update using (id = public.current_user_business());
+
+-- User Profiles policies
+create policy "user_profile_select" on public.user_profiles for select using (id = auth.uid());
+create policy "user_profile_insert" on public.user_profiles for insert with check (id = auth.uid());
 create policy "user_profile_update" on public.user_profiles for update using (id = auth.uid());
 
--- Customers – RLS ensures rows belong to the caller's business
-create policy "customers_select" on public.customers using (business_id = public.current_user_business());
+-- Customers policies
+create policy "customers_select" on public.customers for select using (business_id = public.current_user_business());
 create policy "customers_insert" on public.customers for insert with check (business_id = public.current_user_business());
 create policy "customers_update" on public.customers for update using (business_id = public.current_user_business()) with check (business_id = public.current_user_business());
 create policy "customers_delete" on public.customers for delete using (business_id = public.current_user_business());
 
--- Loyalty Programs – same business isolation
-create policy "programs_select" on public.loyalty_programs using (business_id = public.current_user_business());
+-- Loyalty Programs policies
+create policy "programs_select" on public.loyalty_programs for select using (business_id = public.current_user_business());
 create policy "programs_insert" on public.loyalty_programs for insert with check (business_id = public.current_user_business());
 create policy "programs_update" on public.loyalty_programs for update using (business_id = public.current_user_business()) with check (business_id = public.current_user_business());
 create policy "programs_delete" on public.loyalty_programs for delete using (business_id = public.current_user_business());
 
--- Loyalty Cards – same business isolation
-create policy "cards_select" on public.loyalty_cards using (business_id = public.current_user_business());
+-- Loyalty Cards policies
+create policy "cards_select" on public.loyalty_cards for select using (business_id = public.current_user_business());
 create policy "cards_insert" on public.loyalty_cards for insert with check (business_id = public.current_user_business());
 create policy "cards_update" on public.loyalty_cards for update using (business_id = public.current_user_business()) with check (business_id = public.current_user_business());
 create policy "cards_delete" on public.loyalty_cards for delete using (business_id = public.current_user_business());
 
--- Loyalty Transactions – immutable, only INSERT, business isolation, idempotency guard
-create policy "tx_select" on public.loyalty_transactions using (business_id = public.current_user_business());
-create policy "tx_insert" on public.loyalty_transactions for insert with check (
-    business_id = public.current_user_business()
-    and (idempotency_key is null or (select 1 from public.loyalty_transactions where idempotency_key = new.idempotency_key) is null)
-);
+-- Loyalty Transactions policies (immutable, no update, no delete)
+create policy "tx_select" on public.loyalty_transactions for select using (business_id = public.current_user_business());
+create policy "tx_insert" on public.loyalty_transactions for insert with check (business_id = public.current_user_business());
 create policy "tx_no_update" on public.loyalty_transactions for update using (false);
 create policy "tx_no_delete" on public.loyalty_transactions for delete using (false);
 
--- Rewards – business isolation
-create policy "rewards_select" on public.rewards using (business_id = public.current_user_business());
+-- Rewards policies
+create policy "rewards_select" on public.rewards for select using (business_id = public.current_user_business());
 create policy "rewards_insert" on public.rewards for insert with check (business_id = public.current_user_business());
 create policy "rewards_update" on public.rewards for update using (business_id = public.current_user_business()) with check (business_id = public.current_user_business());
 create policy "rewards_delete" on public.rewards for delete using (business_id = public.current_user_business());
 
--- Wallet Cards – business isolation
-create policy "wallet_select" on public.wallet_cards using (business_id = public.current_user_business());
+-- Wallet Cards policies
+create policy "wallet_select" on public.wallet_cards for select using (business_id = public.current_user_business());
 create policy "wallet_insert" on public.wallet_cards for insert with check (business_id = public.current_user_business());
 create policy "wallet_update" on public.wallet_cards for update using (business_id = public.current_user_business()) with check (business_id = public.current_user_business());
 create policy "wallet_delete" on public.wallet_cards for delete using (business_id = public.current_user_business());
 
 -- ------------------------------------------------------------
--- 11. RPC Functions – atomic loyalty operations
+-- RPC Functions – atomic loyalty operations
 -- ------------------------------------------------------------
--- a) Add stamp (idempotent)
 create or replace function public.add_stamp(
     p_customer_id uuid,
     p_performed_by uuid,
@@ -266,7 +253,6 @@ begin
 end;
 $$;
 
--- b) Redeem reward (idempotent)
 create or replace function public.redeem_reward(
     p_reward_id uuid,
     p_performed_by uuid,
@@ -322,5 +308,5 @@ begin
 end;
 $$;
 
-grant execute on function public.add_stamp(uuid, uuid, uuid) to anon;
-grant execute on function public.redeem_reward(uuid, uuid, uuid) to anon;
+grant execute on function public.add_stamp(uuid, uuid, uuid) to anon, authenticated;
+grant execute on function public.redeem_reward(uuid, uuid, uuid) to anon, authenticated;
