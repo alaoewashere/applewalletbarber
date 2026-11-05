@@ -18,21 +18,36 @@ export interface ApplePassData {
   logoUrl?: string;
 }
 
+function cleanPem(input?: string): string {
+  if (!input) return '';
+  let str = input.trim().replace(/^["']|["']$/g, '');
+  if (str.includes('-----BEGIN')) {
+    return str.replace(/\\n/g, '\n');
+  }
+  try {
+    const decoded = Buffer.from(str.replace(/\s+/g, ''), 'base64').toString('utf-8');
+    if (decoded.includes('-----BEGIN')) {
+      return decoded.replace(/\\n/g, '\n');
+    }
+  } catch (e) {}
+  return str.replace(/\\n/g, '\n');
+}
+
 export function getAppleCertificatesPem(): {
   certPem: string;
   keyPem: string;
   wwdrPem: string;
 } {
-  // 1. Check Base64 environment variables (primary for Vercel / Serverless deployments)
-  const certB64 = process.env.APPLE_CERTIFICATE_BASE64;
-  const keyB64 = process.env.APPLE_PRIVATE_KEY_BASE64;
-  const wwdrB64 = process.env.APPLE_WWDR_CERTIFICATE_BASE64;
+  // 1. Check Base64 / PEM environment variables (for Vercel Serverless)
+  const certEnv = process.env.APPLE_CERTIFICATE_BASE64 || process.env.APPLE_CERTIFICATE_PEM;
+  const keyEnv = process.env.APPLE_PRIVATE_KEY_BASE64 || process.env.APPLE_PRIVATE_KEY_PEM;
+  const wwdrEnv = process.env.APPLE_WWDR_CERTIFICATE_BASE64 || process.env.APPLE_WWDR_CERTIFICATE_PEM;
 
-  if (certB64 && keyB64 && wwdrB64) {
+  if (certEnv && keyEnv && wwdrEnv) {
     return {
-      certPem: Buffer.from(certB64, 'base64').toString('utf-8'),
-      keyPem: Buffer.from(keyB64, 'base64').toString('utf-8'),
-      wwdrPem: Buffer.from(wwdrB64, 'base64').toString('utf-8'),
+      certPem: cleanPem(certEnv),
+      keyPem: cleanPem(keyEnv),
+      wwdrPem: cleanPem(wwdrEnv),
     };
   }
 
@@ -193,9 +208,27 @@ export async function generateApplePassBuffer(data: ApplePassData): Promise<Buff
   const p7 = forge.pkcs7.createSignedData();
   p7.content = forge.util.createBuffer(manifestBuf.toString('utf-8'), 'utf8');
 
-  const passCert = forge.pki.certificateFromPem(certPem);
-  const wwdrCert = forge.pki.certificateFromPem(wwdrPem);
-  const privateKey = forge.pki.privateKeyFromPem(keyPem);
+  let passCert: forge.pki.Certificate;
+  let wwdrCert: forge.pki.Certificate;
+  let privateKey: forge.pki.PrivateKey;
+
+  try {
+    passCert = forge.pki.certificateFromPem(certPem);
+  } catch (err: unknown) {
+    throw new Error(`Failed to parse pass certificate: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  try {
+    wwdrCert = forge.pki.certificateFromPem(wwdrPem);
+  } catch (err: unknown) {
+    throw new Error(`Failed to parse WWDR certificate: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  try {
+    privateKey = forge.pki.privateKeyFromPem(keyPem);
+  } catch (err: unknown) {
+    throw new Error(`Failed to parse private key: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   p7.addCertificate(passCert);
   p7.addCertificate(wwdrCert);
